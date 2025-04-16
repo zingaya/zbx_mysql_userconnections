@@ -5,8 +5,8 @@ zabbix_export:
       name: 'Custom Templates'
   templates:
     - uuid: 9f6046e24a8d4b4c92f9dac95fa78b24
-      template: 'MySQL Connections'
-      name: 'MySQL Connections'
+      template: 'MySQL user connections'
+      name: 'MySQL user connections'
       description: |
         Discover all current connected users(*), and add corresponding items. It will keep discovering and adding users over the time.
         
