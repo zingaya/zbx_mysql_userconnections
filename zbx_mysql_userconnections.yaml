@@ -1,0 +1,140 @@
+zabbix_export:
+  version: '7.2'
+  template_groups:
+    - uuid: 26f42bba0c4448c290fa5423bb4a2664
+      name: 'Custom Templates'
+  templates:
+    - uuid: 9f6046e24a8d4b4c92f9dac95fa78b24
+      template: 'MySQL Connections'
+      name: 'MySQL Connections'
+      description: |
+        Discover all current connected users(*), and add corresponding items. It will keep discovering and adding users over the time.
+        
+        (*) Not all users of the mysql.user table. This is to avoid giving additional permissions to the user already assigned to monitor the database.
+        GRANT REPLICATION CLIENT,PROCESS,SHOW DATABASES,SHOW VIEW ON *.* TO 'zbx_monitor'@'%';
+        
+        Macro is using the MariaDB driver: /usr/lib64/libmaodbc.so
+        Be sure to check which driver you have installed on your server/proxy, and correct the path and filename accordingly.
+      groups:
+        - name: 'Custom Templates'
+      items:
+        - uuid: 7709bc00b2cb469698c6ca8e1e226937
+          name: 'Get connections'
+          type: ODBC
+          key: 'db.odbc.get[connections,,{$MYSQL.CONNSTRING}]'
+          delay: 5m
+          history: 1h
+          value_type: TEXT
+          params: |
+            SELECT 
+            p1.`USER`, 
+            p1.`DB`, 
+            SUBSTRING_INDEX(p1.`HOST`, ':', 1) AS host, 
+            p1.`HOST` as host2, 
+            COUNT(*) AS count, 
+            AVG(p1.`TIME`) AS avgtime, 
+            MAX(p1.`TIME`) AS maxtime,
+            p1.INFO,
+            p1.COMMAND
+            FROM information_schema.`PROCESSLIST` p1 
+            GROUP BY p1.`USER`, SUBSTRING_INDEX(p1.`HOST`, ':', 1), p1.DB, p1.INFO
+            ORDER BY maxtime DESC;
+          username: '{$MYSQL.USER}'
+          password: '{$MYSQL.PASSWORD}'
+      discovery_rules:
+        - uuid: e3d1aecb45df4d1080b7b0d4ceb5c93b
+          name: 'DB users'
+          type: ODBC
+          key: 'db.odbc.discovery[users,,{$MYSQL.CONNSTRING}]'
+          delay: 5m
+          params: 'select distinct `USER` FROM information_schema.processlist;'
+          username: '{$MYSQL.USER}'
+          password: '{$MYSQL.PASSWORD}'
+          lifetime: 30d
+          enabled_lifetime_type: DISABLE_NEVER
+          item_prototypes:
+            - uuid: b07ca6f0b1b24eafba4cc32d514168f3
+              name: 'User {#USER} - average time'
+              type: DEPENDENT
+              key: 'db.userconn[{#USER} average time]'
+              history: 2w
+              units: s
+              description: 'Average time consumption for all currently running commands, excluding those as sleep.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.USER == "{#USER}" && @.COMMAND != "Sleep")].avgtime.avg()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: REGEX
+                  parameters:
+                    - '([0-9]+)'
+                    - \1
+              master_item:
+                key: 'db.odbc.get[connections,,{$MYSQL.CONNSTRING}]'
+              tags:
+                - tag: component
+                  value: mysql-user-connection
+            - uuid: b62ac8c36f23477c95637b6df96b5b96
+              name: 'User {#USER} - connection count'
+              type: DEPENDENT
+              key: 'db.userconn[{#USER} connection count]'
+              history: 2w
+              description: 'All open connections for the user.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.USER == "{#USER}")].count.sum()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'db.odbc.get[connections,,{$MYSQL.CONNSTRING}]'
+              tags:
+                - tag: component
+                  value: mysql-user-connection
+            - uuid: 280502cdd1794660b394c8fa8b4127a6
+              name: 'User {#USER} - max command executed'
+              type: DEPENDENT
+              key: 'db.userconn[{#USER} max command executed]'
+              history: 1w
+              value_type: TEXT
+              description: 'The longest-running command executed, of all those currently running, excluding those that are as sleep.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.USER == "{#USER}" && @.COMMAND != "Sleep")].INFO.first()'
+                  error_handler: CUSTOM_VALUE
+              master_item:
+                key: 'db.odbc.get[connections,,{$MYSQL.CONNSTRING}]'
+              tags:
+                - tag: component
+                  value: mysql-user-connection
+            - uuid: 8515773d51784832af24e08c8f24d179
+              name: 'User {#USER} - max command time'
+              type: DEPENDENT
+              key: 'db.userconn[{#USER} max command time]'
+              history: 2w
+              units: s
+              description: 'The longest-running command time, of all those currently running, excluding those that are as sleep.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.USER == "{#USER}" && @.COMMAND != "Sleep")].maxtime.max()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: 'db.odbc.get[connections,,{$MYSQL.CONNSTRING}]'
+              tags:
+                - tag: component
+                  value: mysql-user-connection
+          lld_macro_paths:
+            - lld_macro: '{#USER}'
+              path: $.USER
+      tags:
+        - tag: class
+          value: database
+        - tag: target
+          value: mysql
+      macros:
+        - macro: '{$MYSQL.CONNSTRING}'
+          value: Driver=/usr/lib64/libmaodbc.so;Server=<REPLACEME>;Port=3306
