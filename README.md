@@ -10,6 +10,8 @@ As the official [Zabbix mysql integration](https://www.zabbix.com/integrations/m
 Macro {$MYSQL.CONNSTRING} is using the MariaDB driver: /usr/lib64/libmaodbc.so \
 Be sure to check which driver you have installed on your server/proxy, and correct the path and filename accordingly. And modify the string on "Server=" with the IP or FQDN of the database server.
 
+There are no triggers depoyed as I only wanted this to analyse and help our Devs and DBAs to debug, but you are free to add and contribute.
+
 Note: To keep it simple and compatible with many Mysql versions I use `information_schema.processlist`, but will be deprecated after Mysql 8.4. Just change both item and discovery rule to use `performance_schema.processlist` in case you need it.
 
 Tested in:
