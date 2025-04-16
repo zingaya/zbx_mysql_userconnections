@@ -14,6 +14,6 @@ There are no triggers depoyed as I only wanted this to analyse and help our Devs
 
 Note: To keep it simple and compatible with many Mysql versions I use `information_schema.processlist`, but will be deprecated after Mysql 8.4. Just change both item and discovery rule to use `performance_schema.processlist` in case you need it.
 
-Tested in:
-Mysql 5.6, 5.7, 8.0, and 8.4
+Tested in:\
+Mysql 5.6, 5.7, 8.0, and 8.4\
 Zabbix 7.0
