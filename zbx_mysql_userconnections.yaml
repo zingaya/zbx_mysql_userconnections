@@ -104,6 +104,9 @@ zabbix_export:
                   parameters:
                     - '$[?(@.USER == "{#USER}" && @.COMMAND != "Sleep")].INFO.first()'
                   error_handler: CUSTOM_VALUE
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
               master_item:
                 key: 'db.odbc.get[connections,,{$MYSQL.CONNSTRING}]'
               tags:
