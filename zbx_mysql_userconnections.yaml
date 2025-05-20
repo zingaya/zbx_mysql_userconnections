@@ -130,9 +130,6 @@ zabbix_export:
               tags:
                 - tag: component
                   value: mysql-user-connection
-          lld_macro_paths:
-            - lld_macro: '{#USER}'
-              path: $.USER
       tags:
         - tag: class
           value: database
